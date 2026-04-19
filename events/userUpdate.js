@@ -2,49 +2,34 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "userUpdate",
+
   execute(oldUser, newUser, client) {
 
-    // ✅ AVATAR CHANGE (TOP RIGHT)
-    if (oldUser.avatar !== newUser.avatar) {
-      client.guilds.cache.forEach(guild => {
-        const member = guild.members.cache.get(newUser.id);
-        if (!member) return;
+    // ✅ AVATAR CHANGE ONLY
+    if (oldUser.avatar === newUser.avatar) return;
 
-        client.log(guild, new EmbedBuilder()
-          .setColor("#9b59b6")
-          .setAuthor({
-            name: newUser.tag,
-            iconURL: newUser.displayAvatarURL({ size: 32 })
-          })
-          .setThumbnail(newUser.displayAvatarURL({ size: 128 })) // TOP RIGHT
-          .setDescription("**Avatar Updated**")
-          .setFooter({ text: `ID: ${newUser.id}` })
-          .setTimestamp()
-        );
-      });
-    }
+    client.guilds.cache.forEach(guild => {
+      const member = guild.members.cache.get(newUser.id);
+      if (!member) return;
 
-    // ✅ USERNAME CHANGE
-    if (oldUser.username !== newUser.username) {
-      client.guilds.cache.forEach(guild => {
-        const member = guild.members.cache.get(newUser.id);
-        if (!member) return;
+      const embed = new EmbedBuilder()
+        .setColor("#9b59b6")
 
-        client.log(guild, new EmbedBuilder()
-          .setColor("#3498db")
-          .setAuthor({
-            name: newUser.tag,
-            iconURL: newUser.displayAvatarURL({ size: 32 })
-          })
-          .setDescription("**Username Changed**")
-          .addFields(
-            { name: "Before", value: oldUser.username },
-            { name: "+After", value: newUser.username }
-          )
-          .setFooter({ text: `ID: ${newUser.id}` })
-          .setTimestamp()
-        );
-      });
-    }
+        // ✅ USER ON TOP LEFT
+        .setAuthor({
+          name: newUser.tag,
+          iconURL: newUser.displayAvatarURL({ size: 32 })
+        })
+        // ✅ TEXT FORMAT
+        .setDescription(`Avatar update\n${member}`)
+        // ✅ IMAGE TOP RIGHT
+        .setThumbnail(newUser.displayAvatarURL({ size: 256 }))
+        // ✅ SMALL FOOTER
+        .setFooter({ text: `ID: ${newUser.id}` })
+
+        .setTimestamp();
+
+      client.log(guild, embed);
+    });
   }
 };

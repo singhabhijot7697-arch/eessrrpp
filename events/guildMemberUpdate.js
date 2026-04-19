@@ -5,18 +5,7 @@ module.exports = {
 
   async execute(oldM, newM, client) {
 
-    // ✅ REMOVE @everyone
-    const oldRoles = oldM.roles.cache.filter(r => r.id !== newM.guild.id);
-    const newRoles = newM.roles.cache.filter(r => r.id !== newM.guild.id);
-
-    // ✅ STRICT DIFF
-    const added = newRoles.filter(r => !oldRoles.has(r.id));
-    const removed = oldRoles.filter(r => !newRoles.has(r.id));
-
-    // ❌ NOTHING CHANGED
-    if (!added.size && !removed.size) return;
-
-    // ✅ FETCH AUDIT LOG
+    // ✅ fetch last role update from audit logs
     let entry;
     try {
       const logs = await newM.guild.fetchAuditLogs({
@@ -24,56 +13,61 @@ module.exports = {
         type: AuditLogEvent.MemberRoleUpdate
       });
 
-      // ✅ find correct log for THIS user
       entry = logs.entries.find(e =>
         e.target.id === newM.id &&
         Date.now() - e.createdTimestamp < 5000
       );
-
     } catch {}
 
-    if (!entry) return; // ❌ ignore fake updates
+    // ❌ ignore if no valid audit log
+    if (!entry) return;
 
-    const executor = entry.executor;
+    const user = newM.user;
 
-    // ✅ VERIFY ROLE CHANGE MATCHES AUDIT
-    const changedRoleIds = entry.changes
-      ?.find(c => c.key === "$add" || c.key === "$remove")
-      ?.new?.map(r => r.id) || [];
+    // ✅ check what actually changed in audit
+    const changes = entry.changes;
 
-    // ✅ ROLE ADDED
-    for (const role of added.values()) {
+    if (!changes) return;
 
-      // ❌ ignore if not in audit log
-      if (!changedRoleIds.includes(role.id)) continue;
+    for (const change of changes) {
 
-      client.log(newM.guild, new EmbedBuilder()
-        .setColor("#2ecc71")
-        .setAuthor({
-          name: executor?.tag || newM.user.tag,
-          iconURL: executor?.displayAvatarURL({ size: 32 })
-        })
-        .setDescription(`**Role Added**\n\n${role}`)
-        .setFooter({ text: `ID: ${newM.id}` })
-        .setTimestamp()
-      );
-    }
+      // ✅ ROLE ADDED
+      if (change.key === "$add") {
+        for (const roleData of change.new) {
+          const role = newM.guild.roles.cache.get(roleData.id);
+          if (!role) continue;
 
-    // ✅ ROLE REMOVED
-    for (const role of removed.values()) {
+          client.log(newM.guild, new EmbedBuilder()
+            .setColor("#2ecc71")
+            .setAuthor({
+              name: user.tag,
+              iconURL: user.displayAvatarURL({ size: 32 })
+            })
+            .setDescription(`**Role added**\n${role}`)
+            .setFooter({ text: `ID: ${user.id}` })
+            .setTimestamp()
+          );
+        }
+      }
 
-      if (!changedRoleIds.includes(role.id)) continue;
+      // ✅ ROLE REMOVED
+      if (change.key === "$remove") {
+        for (const roleData of change.new) {
+          const role = newM.guild.roles.cache.get(roleData.id);
+          if (!role) continue;
 
-      client.log(newM.guild, new EmbedBuilder()
-        .setColor("#e74c3c")
-        .setAuthor({
-          name: executor?.tag || newM.user.tag,
-          iconURL: executor?.displayAvatarURL({ size: 32 })
-        })
-        .setDescription(`**Role Removed**\n\n${role}`)
-        .setFooter({ text: `ID: ${newM.id}` })
-        .setTimestamp()
-      );
+          client.log(newM.guild, new EmbedBuilder()
+            .setColor("#e74c3c")
+            .setAuthor({
+              name: user.tag,
+              iconURL: user.displayAvatarURL({ size: 32 })
+            })
+            .setDescription(`**Role removed**\n${role}`)
+            .setFooter({ text: `ID: ${user.id}` })
+            .setTimestamp()
+          );
+        }
+      }
     }
   }
 };

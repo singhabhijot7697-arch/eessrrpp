@@ -11,11 +11,18 @@ module.exports = {
         name: msg.author.tag,
         iconURL: msg.author.displayAvatarURL({ size: 32 })
       })
-      .setDescription("**Message Deleted**")
+
+      // ✅ BIG TITLE STYLE
+      .setDescription(`**Message deleted in ${msg.channel}**`)
+      // ✅ SMALL CONTENT
       .addFields(
-        { name: "Content", value: msg.content || "None" },
-        { name: "Channel", value: `${msg.channel}` }
+        { name: "\u200B", value: msg.content || "None" }
       )
+      // ✅ MESSAGE ID ABOVE FOOTER (SAME STYLE)
+      .addFields(
+        { name: "\u200B", value: `Message ID: ${msg.id}` }
+      )
+      // ✅ FOOTER = USER ID
       .setFooter({ text: `ID: ${msg.author.id}` })
       .setTimestamp();
 

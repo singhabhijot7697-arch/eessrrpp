@@ -5,19 +5,31 @@ module.exports = {
   execute(oldMsg, newMsg, client) {
     if (!oldMsg.guild || oldMsg.content === newMsg.content) return;
 
-    client.log(oldMsg.guild, new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor("#3498db")
       .setAuthor({
         name: oldMsg.author.tag,
         iconURL: oldMsg.author.displayAvatarURL({ size: 32 })
       })
-      .setDescription(`**Message Edited**`)
+
+      // ✅ BIG HEADER
+      .setDescription(`**Message edited in ${oldMsg.channel}**`)
+
+      // ✅ BEFORE / AFTER CLEAN
       .addFields(
-        { name: "Before", value: `\`${oldMsg.content}\`` },
-        { name: "+After", value: `\`${newMsg.content}\`` }
+        { name: "Before", value: oldMsg.content || "None" },
+        { name: "+After", value: newMsg.content || "None" }
       )
+
+      // ✅ MESSAGE ID ABOVE FOOTER
+      .addFields(
+        { name: "\u200B", value: `Message ID: ${oldMsg.id}` }
+      )
+
+      // ✅ USER ID FOOTER
       .setFooter({ text: `ID: ${oldMsg.author.id}` })
-      .setTimestamp()
-    );
+      .setTimestamp();
+
+    client.log(oldMsg.guild, embed);
   }
 };

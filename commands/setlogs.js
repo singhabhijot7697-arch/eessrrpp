@@ -1,21 +1,25 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("setlogs")
-    .setDescription("Set the log channel for this server")
-    .addChannelOption(option =>
-      option.setName("channel")
-        .setDescription("Select log channel")
+    .setDescription("Set log channel")
+    .addChannelOption(o =>
+      o.setName("channel")
+        .setDescription("Channel")
         .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    ),
 
   async execute(interaction, client) {
+
+    if (interaction.user.id !== process.env.OWNER_ID)
+      return interaction.reply({ content: "❌ Owner only", ephemeral: true });
+
     const config = client.getConfig(interaction.guild.id);
     config.logChannel = interaction.options.getChannel("channel").id;
+
     client.saveConfig();
 
-    interaction.reply("✅ Log channel set");
+    interaction.reply({ content: "✅ Log channel set", ephemeral: true });
   }
 };

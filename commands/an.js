@@ -30,8 +30,8 @@ module.exports = {
     const image = interaction.options.getAttachment("image");
 
     const embed = new EmbedBuilder()
-      .setColor("#f1c40f")
-      .setAuthor({ name: `${interaction.guild.name} | Support` })
+      .setColor("#00eaff")
+      
       .setTitle("⚠️ Infrastructure Maintenance")
       .setDescription(
         `Scheduled maintenance will be carried out on the hosting side. During this time, brief interruptions in service and network timeouts may occur.\n\n` +

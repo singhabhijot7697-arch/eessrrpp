@@ -15,12 +15,11 @@ module.exports = {
         name: member.user.tag,
         iconURL: member.user.displayAvatarURL({ size: 32 })
       })
-      .setDescription("**Member Left**")
+      .setDescription("Member left")
       .addFields(
         { name: "Roles", value: roles },
-        { name: "\u200B", value: "`\n`" }
+        { name: "ID", value: member.id }
       )
-      .setFooter({ text: `ID: ${member.id}` })
       .setTimestamp()
     );
   }
