@@ -2,7 +2,8 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "guildMemberRemove",
-  execute(member, client) {
+
+  execute(member, client) { // ✅ client MUST be here
 
     const roles = member.roles.cache
       .filter(r => r.id !== member.guild.id)
@@ -17,6 +18,7 @@ module.exports = {
       })
       .setDescription("Member left")
       .addFields(
+        { name: "\u200B", value: `${member} joined <t:${Math.floor(member.joinedTimestamp/1000)}:R>` },
         { name: "Roles", value: roles },
         { name: "ID", value: member.id }
       )

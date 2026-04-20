@@ -2,7 +2,9 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "guildMemberAdd",
-  execute(member, client) {
+
+  execute(member, client) { // ✅ client MUST be here
+
     client.log(member.guild, new EmbedBuilder()
       .setColor("#2ecc71")
       .setAuthor({

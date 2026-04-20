@@ -1,11 +1,18 @@
+const { EmbedBuilder } = require("discord.js");
+
 module.exports = {
   name: "guildUpdate",
   execute(oldG, newG, client) {
 
-    if (oldG.name !== newG.name) {
-      client.log(newG, {
-        description: `Server updated\n${oldG.name} → ${newG.name}`
-      });
+    // ✅ SERVER ICON CHANGE
+    if (oldG.icon !== newG.icon) {
+      client.log(newG, new EmbedBuilder()
+        .setColor("#3498db")
+        .setDescription("Server icon updated")
+        .setImage(newG.iconURL({ size: 512 }))
+        .setFooter({ text: `Server ID: ${newG.id}` })
+        .setTimestamp()
+      );
     }
   }
 };
