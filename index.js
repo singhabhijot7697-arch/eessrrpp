@@ -1,12 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const express = require("express");
-const { 
-  Client, 
-  GatewayIntentBits, 
-  Collection, 
-  Partials 
-} = require("discord.js");
+const { Client, GatewayIntentBits, Collection, Partials } = require("discord.js");
 
 // ✅ WEB SERVER (Render)
 const app = express();
@@ -20,7 +15,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildModeration
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates // ✅ voice fix
   ],
   partials: [
     Partials.Message,
@@ -31,7 +27,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// ✅ DATA
+// ✅ LOAD DATA
 client.configs = require("./data/config.json");
 client.words = require("./data/words.json");
 client.cases = require("./data/cases.json");
@@ -39,7 +35,7 @@ client.cases = require("./data/cases.json");
 // ✅ WARN SYSTEM
 client.warns = {};
 
-// ✅ STATUS LIST
+// ✅ STATUS
 client.statusList = ["Eight Streets RolePlay"];
 
 // ✅ CONFIG SYSTEM
@@ -69,7 +65,7 @@ client.log = async (guild, embed) => {
   ch.send({ embeds: [embed] }).catch(() => {});
 };
 
-// ✅ OWNER + CHANNEL EMBED LOG
+// ✅ OWNER LOG
 client.ownerLogEmbed = async (client, embed, guild) => {
   try {
     const owner = await client.users.fetch(process.env.OWNER_ID);
@@ -83,13 +79,14 @@ client.ownerLogEmbed = async (client, embed, guild) => {
   } catch {}
 };
 
-// ✅ LOAD SLASH COMMANDS
+// ✅ LOAD COMMANDS
 fs.readdirSync("./commands").forEach(file => {
   const cmd = require(`./commands/${file}`);
   if (cmd.data) client.commands.set(cmd.data.name, cmd);
+  if (cmd.name) client.commands.set(cmd.name, cmd);
 });
 
-// ✅ SLASH HANDLER
+// ✅ SLASH COMMAND HANDLER
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -104,7 +101,7 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// ✅ PREFIX COMMANDS (!info etc.)
+// ✅ PREFIX COMMAND HANDLER (!info)
 client.on("messageCreate", async (message) => {
   if (!message.guild || message.author.bot) return;
 
@@ -130,7 +127,7 @@ fs.readdirSync("./events").forEach(file => {
   client.on(event.name, (...args) => event.execute(...args, client));
 });
 
-// ✅ READY + ROTATING STATUS
+// ✅ READY + STATUS
 client.on("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 

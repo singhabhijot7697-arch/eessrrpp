@@ -5,23 +5,30 @@ module.exports = {
     .setName("an")
     .setDescription("Send maintenance announcement")
 
-    // ✅ REQUIRED FIRST (IMPORTANT FIX)
+    // ✅ REQUIRED FIRST
     .addStringOption(o =>
       o.setName("date")
         .setDescription("Maintenance date & time")
         .setRequired(true)
     )
-
     .addStringOption(o =>
       o.setName("servers")
         .setDescription("Affected servers")
         .setRequired(true)
     )
 
-    // ✅ OPTIONAL AFTER
+    // ✅ EMOJIS
     .addStringOption(o =>
-      o.setName("emoji")
-        .setDescription("Emoji (⚠️ or <:emoji:id>)")
+      o.setName("emoji1")
+        .setDescription("Emoji for title")
+    )
+    .addStringOption(o =>
+      o.setName("emoji2")
+        .setDescription("Emoji for date")
+    )
+    .addStringOption(o =>
+      o.setName("emoji3")
+        .setDescription("Emoji for servers")
     )
 
     .addRoleOption(o =>
@@ -38,7 +45,7 @@ module.exports = {
 
     const config = client.getConfig(interaction.guild.id);
 
-    // ✅ OWNER OR WHITELIST
+    // ✅ PERMISSION
     const allowed =
       interaction.user.id === process.env.OWNER_ID ||
       config.whitelist.includes(interaction.user.id) ||
@@ -50,19 +57,22 @@ module.exports = {
 
     const date = interaction.options.getString("date");
     const servers = interaction.options.getString("servers");
-    const emoji = interaction.options.getString("emoji") || "⚠️";
+
+    const emoji1 = interaction.options.getString("emoji1") || "⚠️";
+    const emoji2 = interaction.options.getString("emoji2") || "📅";
+    const emoji3 = interaction.options.getString("emoji3") || "📋";
+
     const role = interaction.options.getRole("role");
     const image = interaction.options.getAttachment("image");
 
-    // ✅ EMBED
     const embed = new EmbedBuilder()
       .setColor("#f1c40f")
       .setAuthor({ name: `${interaction.guild.name} | Support` })
-      .setTitle(`${emoji} Infrastructure Maintenance`)
+      .setTitle(`${emoji1} Infrastructure Maintenance`)
       .setDescription(
         `Scheduled maintenance will be carried out on the hosting side. During this time, brief interruptions in service and network timeouts may occur.\n\n` +
-        `📅 **Maintenance Date**\n${date}\n\n` +
-        `📋 **Affected Servers**\n${servers}`
+        `${emoji2} **Maintenance Date**\n${date}\n\n` +
+        `${emoji3} **Affected Servers**\n${servers}`
       )
       .setFooter({ text: "Thank you for your understanding." })
       .setTimestamp();
@@ -70,28 +80,12 @@ module.exports = {
     // ✅ IMAGE TOP RIGHT
     if (image) embed.setThumbnail(image.url);
 
-    // ✅ REPLY
     await interaction.reply({ content: "✅ Announcement sent", ephemeral: true });
 
-    // ✅ SEND
     await interaction.channel.send({
       content: role ? `${role}` : "",
       embeds: [embed],
       allowedMentions: role ? { roles: [role.id] } : {}
     });
-
-    // ✅ LOG (OWNER + CHANNEL)
-    const logEmbed = new EmbedBuilder()
-      .setColor("#3498db")
-      .setTitle("/an used")
-      .addFields(
-        { name: "User", value: interaction.user.tag },
-        { name: "Server", value: interaction.guild.name },
-        { name: "Date", value: date },
-        { name: "Servers", value: servers }
-      )
-      .setTimestamp();
-
-    client.ownerLogEmbed(client, logEmbed, interaction.guild);
   }
 };

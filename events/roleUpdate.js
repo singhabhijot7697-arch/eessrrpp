@@ -19,9 +19,12 @@ module.exports = {
       changes.push(`Color: ${oldC} ➜ ${newC}`);
     }
 
-    // ✅ POSITION
+    // ✅ POSITION (ANTI-SPAM FIX)
     if (oldR.position !== newR.position) {
-      changes.push(`Position: ${oldR.position} ➜ ${newR.position}`);
+      // ignore tiny reorder spam
+      if (Math.abs(oldR.position - newR.position) > 1) {
+        changes.push(`Position: ${oldR.position} ➜ ${newR.position}`);
+      }
     }
 
     // ✅ MENTIONABLE
@@ -34,7 +37,7 @@ module.exports = {
       changes.push(`Displayed separately: ${oldR.hoist ? "✅" : "❌"} ➜ ${newR.hoist ? "✅" : "❌"}`);
     }
 
-    // ✅ PERMISSION DIFF
+    // ✅ PERMISSIONS DIFF
     const allPerms = new Set([
       ...oldR.permissions.toArray(),
       ...newR.permissions.toArray()
@@ -56,10 +59,10 @@ module.exports = {
       iconChanged = true;
     }
 
-    // ❌ nothing changed
+    // ❌ NOTHING CHANGED
     if (!changes.length) return;
 
-    // ✅ EXECUTOR
+    // ✅ EXECUTOR (SAFE)
     let executor;
     try {
       const logs = await newR.guild.fetchAuditLogs({
@@ -69,6 +72,7 @@ module.exports = {
       executor = logs.entries.first()?.executor;
     } catch {}
 
+    // ✅ EMBED
     const embed = new EmbedBuilder()
       .setColor("#f1c40f")
       .setAuthor({
@@ -80,7 +84,7 @@ module.exports = {
       .setFooter({ text: `Role ID: ${newR.id}` })
       .setTimestamp();
 
-    // ✅ show icon if changed
+    // ✅ SHOW ICON
     if (iconChanged && newR.icon) {
       embed.setImage(newR.iconURL({ size: 256 }));
     }
@@ -89,7 +93,7 @@ module.exports = {
   }
 };
 
-// ✅ FORMAT PERMISSION NAME
+// ✅ FORMAT PERMISSIONS
 function formatPerm(perm) {
   return perm
     .replace(/([A-Z])/g, " $1")

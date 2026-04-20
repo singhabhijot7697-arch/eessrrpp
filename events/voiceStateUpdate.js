@@ -2,26 +2,60 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "voiceStateUpdate",
-  execute(oldS, newS, client) {
 
-    const user = newS.member.user;
+  execute(oldState, newState, client) {
 
-    if (!oldS.channel && newS.channel) {
-      client.log(newS.guild, new EmbedBuilder()
+    const member = newState.member;
+    if (!member || member.user.bot) return;
+
+    const user = member.user;
+
+    // ✅ JOIN
+    if (!oldState.channel && newState.channel) {
+      client.log(newState.guild, new EmbedBuilder()
         .setColor("#9b59b6")
-        .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ size: 32 }) })
-        .setDescription(`${user.tag} joined ${newS.channel}`)
+        .setAuthor({
+          name: user.tag,
+          iconURL: user.displayAvatarURL({ size: 32 })
+        })
+        .setDescription(`Member joined voice channel\n${user.tag} joined ${newState.channel}`)
         .setFooter({ text: `ID: ${user.id}` })
         .setTimestamp()
       );
     }
 
-    if (oldS.channel && !newS.channel) {
-      client.log(newS.guild, new EmbedBuilder()
+    // ✅ LEAVE
+    if (oldState.channel && !newState.channel) {
+      client.log(newState.guild, new EmbedBuilder()
         .setColor("#9b59b6")
-        .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ size: 32 }) })
-        .setDescription(`${user.tag} left ${oldS.channel}`)
+        .setAuthor({
+          name: user.tag,
+          iconURL: user.displayAvatarURL({ size: 32 })
+        })
+        .setDescription(`Member left voice channel\n${user.tag} left ${oldState.channel}`)
         .setFooter({ text: `ID: ${user.id}` })
+        .setTimestamp()
+      );
+    }
+
+    // ✅ MOVE
+    if (
+      oldState.channel &&
+      newState.channel &&
+      oldState.channel.id !== newState.channel.id
+    ) {
+      client.log(newState.guild, new EmbedBuilder()
+        .setColor("#9b59b6")
+        .setAuthor({
+          name: user.tag,
+          iconURL: user.displayAvatarURL({ size: 32 })
+        })
+        .setDescription("Member changed voice channel")
+        .addFields(
+          { name: "Before", value: `${oldState.channel}` },
+          { name: "+After", value: `${newState.channel}` },
+          { name: "ID", value: user.id }
+        )
         .setTimestamp()
       );
     }
