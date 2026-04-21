@@ -6,36 +6,35 @@ module.exports = {
     .setDescription("Send message")
     .addStringOption(o =>
       o.setName("text")
-        .setDescription("Message")
+        .setDescription("Message to send") // ✅ FIXED
         .setRequired(true)
     ),
 
   async execute(interaction, client) {
 
+    await interaction.deferReply({ flags: 64 });
+
     const config = client.getConfig(interaction.guild.id);
 
-    // ✅ whitelist / owner check
     const allowed =
       interaction.user.id === process.env.OWNER_ID ||
       config.whitelist.includes(interaction.user.id) ||
       interaction.member.roles.cache.some(r => config.whitelist.includes(r.id));
 
-    if (!allowed)
-      return interaction.reply({ content: "❌ Not allowed", ephemeral: true });
+    if (!allowed) {
+      return interaction.editReply({ content: "❌ Not allowed" });
+    }
 
     const text = interaction.options.getString("text");
 
-    await interaction.reply({ content: "✅ Sent", ephemeral: true });
-
     await interaction.channel.send(text);
+    await interaction.editReply({ content: "✅ Sent" });
 
-    // ✅ LOG (INSIDE FUNCTION ✅)
     const embed = new EmbedBuilder()
       .setColor("#3498db")
       .setTitle("/say used")
       .addFields(
         { name: "User", value: interaction.user.tag },
-        { name: "Server", value: interaction.guild.name },
         { name: "Message", value: text }
       )
       .setTimestamp();

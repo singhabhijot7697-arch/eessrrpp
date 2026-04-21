@@ -5,7 +5,7 @@ module.exports = {
     .setName("an")
     .setDescription("Send maintenance announcement")
 
-    // ✅ REQUIRED FIRST
+    // ✅ REQUIRED
     .addStringOption(o =>
       o.setName("date")
         .setDescription("Maintenance date & time")
@@ -13,79 +13,94 @@ module.exports = {
     )
     .addStringOption(o =>
       o.setName("servers")
-        .setDescription("Affected servers")
+        .setDescription("Affected servers (text)")
+        .setRequired(true)
+    )
+
+    // ✅ ROLE FOR PING
+    .addRoleOption(o =>
+      o.setName("role")
+        .setDescription("Role to ping")
         .setRequired(true)
     )
 
     // ✅ EMOJIS
-    .addStringOption(o =>
-      o.setName("emoji1")
-        .setDescription("Emoji for title")
-    )
-    .addStringOption(o =>
-      o.setName("emoji2")
-        .setDescription("Emoji for date")
-    )
-    .addStringOption(o =>
-      o.setName("emoji3")
-        .setDescription("Emoji for servers")
-    )
+    .addStringOption(o => o.setName("title_emoji").setDescription("Title emoji"))
+    .addStringOption(o => o.setName("date_emoji").setDescription("Date emoji"))
+    .addStringOption(o => o.setName("server_emoji").setDescription("Server emoji"))
 
-    .addRoleOption(o =>
-      o.setName("role")
-        .setDescription("Role to ping")
-    )
-
+    // ✅ IMAGE
     .addAttachmentOption(o =>
       o.setName("image")
-        .setDescription("Attach image (top-right)")
+        .setDescription("Image (top-right)")
     ),
 
   async execute(interaction, client) {
 
+    await interaction.deferReply({ flags: 64 });
+
     const config = client.getConfig(interaction.guild.id);
 
-    // ✅ PERMISSION
+    // ✅ PERMISSION CHECK
     const allowed =
       interaction.user.id === process.env.OWNER_ID ||
       config.whitelist.includes(interaction.user.id) ||
       interaction.member.roles.cache.some(r => config.whitelist.includes(r.id));
 
     if (!allowed) {
-      return interaction.reply({ content: "❌ Not allowed", ephemeral: true });
+      return interaction.editReply({ content: "❌ Not allowed" });
     }
 
     const date = interaction.options.getString("date");
-    const servers = interaction.options.getString("servers");
-
-    const emoji1 = interaction.options.getString("emoji1") || "⚠️";
-    const emoji2 = interaction.options.getString("emoji2") || "📅";
-    const emoji3 = interaction.options.getString("emoji3") || "📋";
-
+    const serversText = interaction.options.getString("servers");
     const role = interaction.options.getRole("role");
+
+    // ✅ EMOJIS
+    const e1 = interaction.options.getString("title_emoji") || "⚠️";
+    const e2 = interaction.options.getString("date_emoji") || "📅";
+    const e3 = interaction.options.getString("server_emoji") || "📋";
+
     const image = interaction.options.getAttachment("image");
 
+    // ✅ EMBED (TEXT ONLY)
     const embed = new EmbedBuilder()
-      .setColor("#f1c40f")
-      .setAuthor({ name: `${interaction.guild.name} | Support` })
-      .setTitle(`${emoji1} Infrastructure Maintenance`)
+      .setColor("#5100ff")
+      .setTitle(`${e1} Infrastructure Maintenance`)
       .setDescription(
         `Scheduled maintenance will be carried out on the hosting side. During this time, brief interruptions in service and network timeouts may occur.\n\n` +
-        `${emoji2} **Maintenance Date**\n${date}\n\n` +
-        `${emoji3} **Affected Servers**\n${servers}`
+
+        `${e2} **Maintenance Date**\n${date}\n\n` +
+
+        `${e3} **Affected Servers**\n${serversText}`
       )
       .setFooter({ text: "Thank you for your understanding." })
       .setTimestamp();
 
-    // ✅ IMAGE TOP RIGHT
     if (image) embed.setThumbnail(image.url);
-
-    await interaction.reply({ content: "✅ Announcement sent", ephemeral: true });
-
+    
+    // ✅ SEND MESSAGE (ROLE SPOILER)
     await interaction.channel.send({
-      content: role ? `${role}` : "",
+      content: `||${role}||`,
       embeds: [embed],
-      allowedMentions: role ? { roles: [role.id] } : {}
+      allowedMentions: { roles: [role.id] }
     });
+
+    await interaction.editReply({ content: "✅ Announcement sent" });
+
+    // ✅ ✅ LOG SYSTEM
+    const logEmbed = new EmbedBuilder()
+      .setColor("#3498db")
+      .setTitle("/an used")
+      .addFields(
+        { name: "User", value: interaction.user.tag },
+        { name: "Server", value: interaction.guild.name },
+        { name: "Maintenance Date", value: date },
+        { name: "Affected Servers", value: serversText },
+        { name: "Ping Role", value: role.name }
+      )
+      .setFooter({ text: `ID: ${interaction.user.id}` })
+      .setTimestamp();
+
+    client.ownerLogEmbed(client, logEmbed, interaction.guild);
   }
 };

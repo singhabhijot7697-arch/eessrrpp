@@ -5,9 +5,7 @@ module.exports = {
 
   async execute(oldC, newC, client) {
 
-    const oldPerms = oldC.permissionOverwrites.cache;
-    const newPerms = newC.permissionOverwrites.cache;
-
+    // ✅ GET EXECUTOR
     let executor;
     try {
       const logs = await newC.guild.fetchAuditLogs({
@@ -17,7 +15,10 @@ module.exports = {
       executor = logs.entries.first()?.executor;
     } catch {}
 
-    // ✅ LOOP OVER PERMISSIONS
+    const oldPerms = oldC.permissionOverwrites.cache;
+    const newPerms = newC.permissionOverwrites.cache;
+
+    // ✅ CHECK EACH TARGET (role/user)
     for (const [id, newPerm] of newPerms) {
 
       const oldPerm = oldPerms.get(id);
@@ -25,45 +26,41 @@ module.exports = {
 
       const changes = [];
 
-      const allPerms = new Set([
+      const perms = new Set([
         ...oldPerm.allow.toArray(),
         ...oldPerm.deny.toArray(),
         ...newPerm.allow.toArray(),
         ...newPerm.deny.toArray()
       ]);
 
-      for (const perm of allPerms) {
+      perms.forEach(p => {
 
-        const before = oldPerm.allow.has(perm)
+        const before = oldPerm.allow.has(p)
           ? "✅"
-          : oldPerm.deny.has(perm)
+          : oldPerm.deny.has(p)
           ? "❌"
           : "⬜";
 
-        const after = newPerm.allow.has(perm)
+        const after = newPerm.allow.has(p)
           ? "✅"
-          : newPerm.deny.has(perm)
+          : newPerm.deny.has(p)
           ? "❌"
           : "⬜";
 
         if (before !== after) {
-          changes.push(`${formatPerm(perm)}: ${before} ➜ ${after}`);
+          changes.push(`${formatPerm(p)}: ${before} ➜ ${after}`);
         }
-      }
+      });
 
       if (!changes.length) continue;
 
-      // ✅ FIND TARGET (ROLE OR USER)
+      // ✅ GET TARGET (ROLE / USER)
       const target =
         newC.guild.roles.cache.get(id) ||
         newC.guild.members.cache.get(id);
 
       const embed = new EmbedBuilder()
         .setColor("#f1c40f")
-        .setAuthor({
-          name: executor ? executor.tag : "Unknown",
-          iconURL: executor?.displayAvatarURL({ size: 32 })
-        })
         .setDescription(
           `Text channel updated\nOverwrites for ${target} in ${newC} updated`
         )
@@ -79,9 +76,10 @@ module.exports = {
   }
 };
 
-// ✅ FORMAT PERMISSION NAME
+// ✅ FORMAT PERMISSIONS
 function formatPerm(perm) {
   return perm
     .replace(/([A-Z])/g, " $1")
-    .replace(/^./, c => c.toUpperCase());
+    .toLowerCase()
+    .replace(/\b\w/g, l => l.toUpperCase());
 }

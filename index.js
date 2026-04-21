@@ -16,18 +16,15 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildVoiceStates // ✅ voice fix
+    GatewayIntentBits.GuildVoiceStates
   ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.GuildMember
-  ]
+  partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
 });
 
+// ✅ COMMANDS
 client.commands = new Collection();
 
-// ✅ LOAD DATA
+// ✅ DATA
 client.configs = require("./data/config.json");
 client.words = require("./data/words.json");
 client.cases = require("./data/cases.json");
@@ -35,8 +32,10 @@ client.cases = require("./data/cases.json");
 // ✅ WARN SYSTEM
 client.warns = {};
 
-// ✅ STATUS
-client.statusList = ["Eight Streets RolePlay"];
+// ✅ ✅ DEFAULT STATUS (FIXED ✅)
+client.statusList = [
+  { type: 0, text: "Eight Streets RolePlay" }
+];
 
 // ✅ CONFIG SYSTEM
 client.getConfig = (guildId) => {
@@ -65,7 +64,7 @@ client.log = async (guild, embed) => {
   ch.send({ embeds: [embed] }).catch(() => {});
 };
 
-// ✅ OWNER LOG
+// ✅ OWNER + CHANNEL LOG
 client.ownerLogEmbed = async (client, embed, guild) => {
   try {
     const owner = await client.users.fetch(process.env.OWNER_ID);
@@ -97,11 +96,13 @@ client.on("interactionCreate", async (interaction) => {
     await cmd.execute(interaction, client);
   } catch (err) {
     console.error(err);
-    interaction.reply({ content: "❌ Error", ephemeral: true });
+    if (!interaction.replied) {
+      interaction.reply({ content: "❌ Error", ephemeral: true });
+    }
   }
 });
 
-// ✅ PREFIX COMMAND HANDLER (!info)
+// ✅ PREFIX COMMAND HANDLER
 client.on("messageCreate", async (message) => {
   if (!message.guild || message.author.bot) return;
 
@@ -127,20 +128,39 @@ fs.readdirSync("./events").forEach(file => {
   client.on(event.name, (...args) => event.execute(...args, client));
 });
 
-// ✅ READY + STATUS
+// ✅ READY + ROTATING STATUS (FIXED ✅)
 client.on("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   let i = 0;
+
   setInterval(() => {
+
+    if (!client.statusList || client.statusList.length === 0) {
+      client.user.setPresence({
+        activities: [{
+          name: "Eight Streets RolePlay",
+          type: 0
+        }],
+        status: "online"
+      });
+      return;
+    }
+
+    const s = client.statusList[i % client.statusList.length];
+
+    if (!s || typeof s.text !== "string") return;
+
     client.user.setPresence({
       activities: [{
-        name: client.statusList[i % client.statusList.length],
-        type: 0
+        name: s.text,
+        type: s.type || 0
       }],
       status: "online"
     });
+
     i++;
+
   }, 10000);
 });
 

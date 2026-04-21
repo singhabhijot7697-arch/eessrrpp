@@ -8,13 +8,13 @@ module.exports = {
 
     const config = client.getConfig(message.guild.id);
 
-    // ✅ WHITELIST
-    const isWL =
+    // ✅ WHITELIST CHECK
+    const allowed =
       message.author.id === process.env.OWNER_ID ||
       config.whitelist.includes(message.author.id) ||
       message.member.roles.cache.some(r => config.whitelist.includes(r.id));
 
-    if (isWL) return;
+    if (allowed) return;
 
     const content = message.content.toLowerCase();
 
@@ -23,7 +23,7 @@ module.exports = {
       return punish(message, client, "LINK");
     }
 
-    // ✅ ABUSE
+    // ✅ ABUSE WORDS
     const clean = content.replace(/[^a-z0-9\s]/gi, "");
     const found = client.words.find(w => clean.includes(w));
 
@@ -33,7 +33,7 @@ module.exports = {
   }
 };
 
-// ✅ PUNISH SYSTEM
+// ✅ ✅ PUNISH SYSTEM
 async function punish(message, client, type, word = null) {
 
   const gid = message.guild.id;
@@ -54,57 +54,78 @@ async function punish(message, client, type, word = null) {
   data.count++;
   data.last = Date.now();
 
-  const warn = data.count;
+  const n = data.count;
 
   await message.delete().catch(()=>{});
 
-  const punishments = {
+  const durations = {
     1: 30 * 60 * 1000,
     2: 2 * 60 * 60 * 1000,
     3: 24 * 60 * 60 * 1000,
     4: 7 * 24 * 60 * 60 * 1000
   };
 
-  // ✅ BAN
-  if (warn >= 5) {
+  const reasonText =
+    type === "LINK"
+      ? "Sending links is not allowed."
+      : `Abusive language${word ? ` ("${word}")` : ""}.`;
+
+  // ✅ BAN (5th)
+  if (n >= 5) {
+
     await message.guild.members.ban(uid).catch(()=>{});
 
+    // ✅ DM USER
     await message.author.send(
-      `🚫 You have been banned from **${message.guild.name}** (5 warnings).`
+      `🚫 You have been **banned** from **${message.guild.name}**.\nReason: ${reasonText}\n(5/5 warnings)`
     ).catch(()=>{});
+
+    // ✅ LOG EMBED
+    const embed = new EmbedBuilder()
+      .setColor("#e74c3c")
+      .setTitle("User banned (5/5)")
+      .addFields(
+        { name: "User", value: message.author.tag },
+        { name: "Reason", value: reasonText },
+        { name: "Server", value: message.guild.name }
+      )
+      .setFooter({ text: `ID: ${uid}` })
+      .setTimestamp();
+
+    await client.ownerLogEmbed(client, embed, message.guild);
 
     delete client.warns[gid][uid];
     return;
   }
 
-  // ✅ TIMEOUT
-  const duration = punishments[warn];
+  // ✅ MUTE (1–4)
+  const duration = durations[n];
+
   await message.member.timeout(duration).catch(()=>{});
 
-  const next = {
-    1: "Next: 2h mute",
-    2: "Next: 24h mute",
-    3: "Next: 7d mute",
-    4: "Next: BAN"
-  };
-
+  // ✅ DM USER
   await message.author.send(
-    `⚠️ Warning ${warn}/5 in **${message.guild.name}**\n\n` +
-    `Muted for ${format(duration)}\n` +
-    `${next[warn]}`
+    `⚠️ Warning ${n}/5 in **${message.guild.name}**\nMuted for ${format(duration)}\nReason: ${reasonText}`
   ).catch(()=>{});
 
-  client.log(message.guild, new EmbedBuilder()
+  // ✅ LOG EMBED
+  const embed = new EmbedBuilder()
     .setColor("#e67e22")
-    .setDescription(`User punished (${warn}/5)`)
-    .addFields({ name: "User", value: message.author.tag })
+    .setTitle("User muted")
+    .addFields(
+      { name: "User", value: message.author.tag },
+      { name: "Reason", value: reasonText },
+      { name: "Duration", value: format(duration) },
+      { name: "Warnings", value: `${n}/5` }
+    )
     .setFooter({ text: `ID: ${uid}` })
-    .setTimestamp()
-  );
+    .setTimestamp();
+
+  await client.ownerLogEmbed(client, embed, message.guild);
 }
 
 // ✅ FORMAT TIME
-function format(ms) {
+function format(ms){
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
 

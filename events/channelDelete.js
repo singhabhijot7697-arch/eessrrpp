@@ -2,16 +2,29 @@ const { EmbedBuilder, AuditLogEvent } = require("discord.js");
 
 module.exports = {
   name: "channelDelete",
+
   async execute(channel, client) {
 
-    const executor = await client.getExecutor(channel.guild, AuditLogEvent.ChannelDelete);
+    // ✅ GET EXECUTOR (optional)
+    let executor;
+    try {
+      const logs = await channel.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.ChannelDelete
+      });
+      executor = logs.entries.first()?.executor;
+    } catch {}
 
-    client.log(channel.guild, new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor("#e74c3c")
-      .setAuthor({ name: executor ? executor.tag : "Unknown" })
-      .setDescription(`Channel deleted\n${channel.name}`)
-      .addFields({ name: "ID", value: channel.id })
-      .setTimestamp()
-    );
+      .setDescription("Text channel deleted")
+      .addFields(
+        { name: "Name", value: channel.name },
+        { name: "Category", value: channel.parent ? channel.parent.name : "None" }
+      )
+      .setFooter({ text: `Channel ID: ${channel.id}` })
+      .setTimestamp();
+
+    client.log(channel.guild, embed);
   }
 };
