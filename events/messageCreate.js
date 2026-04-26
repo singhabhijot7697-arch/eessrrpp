@@ -8,7 +8,6 @@ module.exports = {
 
     const config = client.getConfig(message.guild.id);
 
-    const userId = message.author.id;
     const content = message.content;
 
     // ✅ WHITELIST USER / ROLE
@@ -25,20 +24,21 @@ module.exports = {
     if (/^[\p{Emoji}\s]+$/u.test(content)) return;
 
     // =========================
-    // ✅ IGNORE GIF ATTACHMENTS
+    // ✅ IGNORE GIFs (ALL TYPES)
     // =========================
+    const gifRegex = /(tenor\.com|giphy\.com|\.gif)/i;
+
+    // ✅ GIF attachments
     if (message.attachments.size > 0) {
       const att = message.attachments.first();
       if (att.contentType?.includes("gif")) return;
     }
 
-    // =========================
-    // ✅ IGNORE GIF LINKS
-    // =========================
-    if (content.match(/\.(gif)$/i)) return;
+    // ✅ GIF links (tenor/giphy/direct gif)
+    if (gifRegex.test(content)) return;
 
     // =========================
-    // ✅ LINK DETECTION
+    // ✅ LINK DETECTION (BLOCK OTHERS)
     // =========================
     const linkRegex = /(https?:\/\/|discord\.gg|www\.)/i;
 
@@ -82,7 +82,7 @@ async function punish(message, client, type, word = null) {
 
   const warnCount = data.count;
 
-  await message.delete().catch(()=>{});
+  await message.delete().catch(() => {});
 
   const durations = {
     1: 30 * 60 * 1000,
@@ -99,11 +99,11 @@ async function punish(message, client, type, word = null) {
   // ✅ BAN (5th warn)
   if (warnCount >= 5) {
 
-    await message.guild.members.ban(uid).catch(()=>{});
+    await message.guild.members.ban(uid).catch(() => {});
 
     await message.author.send(
       `🚫 You have been banned from **${message.guild.name}**\nReason: ${reasonText}\n(5/5 warnings)`
-    ).catch(()=>{});
+    ).catch(() => {});
 
     const embed = new EmbedBuilder()
       .setColor("#e74c3c")
@@ -121,14 +121,14 @@ async function punish(message, client, type, word = null) {
     return;
   }
 
-  // ✅ MUTE (1–4)
+  // ✅ TIMEOUT (1–4)
   const duration = durations[warnCount];
 
-  await message.member.timeout(duration).catch(()=>{});
+  await message.member.timeout(duration).catch(() => {});
 
   await message.author.send(
     `⚠️ Warning ${warnCount}/5 in **${message.guild.name}**\nReason: ${reasonText}`
-  ).catch(()=>{});
+  ).catch(() => {});
 
   const embed = new EmbedBuilder()
     .setColor("#e67e22")
