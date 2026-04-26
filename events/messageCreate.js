@@ -8,23 +8,49 @@ module.exports = {
 
     const config = client.getConfig(message.guild.id);
 
-    // ✅ WHITELIST CHECK
-    const allowed =
+    const userId = message.author.id;
+    const content = message.content;
+
+    // ✅ WHITELIST USER / ROLE
+    const isWhitelisted =
       message.author.id === process.env.OWNER_ID ||
       config.whitelist.includes(message.author.id) ||
       message.member.roles.cache.some(r => config.whitelist.includes(r.id));
 
-    if (allowed) return;
+    if (isWhitelisted) return;
 
-    const content = message.content.toLowerCase();
+    // =========================
+    // ✅ IGNORE EMOJI ONLY
+    // =========================
+    if (/^[\p{Emoji}\s]+$/u.test(content)) return;
 
-    // ✅ LINK BLOCK (ALLOW GIF)
-    if (/(https?:\/\/|discord\.gg|www\.)/.test(content) && !content.match(/\.gif$/)) {
+    // =========================
+    // ✅ IGNORE GIF ATTACHMENTS
+    // =========================
+    if (message.attachments.size > 0) {
+      const att = message.attachments.first();
+      if (att.contentType?.includes("gif")) return;
+    }
+
+    // =========================
+    // ✅ IGNORE GIF LINKS
+    // =========================
+    if (content.match(/\.(gif)$/i)) return;
+
+    // =========================
+    // ✅ LINK DETECTION
+    // =========================
+    const linkRegex = /(https?:\/\/|discord\.gg|www\.)/i;
+
+    if (linkRegex.test(content)) {
       return punish(message, client, "LINK");
     }
 
-    // ✅ ABUSE WORDS
-    const clean = content.replace(/[^a-z0-9\s]/gi, "");
+    // =========================
+    // ✅ ABUSE FILTER
+    // =========================
+    const clean = content.toLowerCase().replace(/[^a-z0-9\s]/gi, "");
+
     const found = client.words.find(w => clean.includes(w));
 
     if (found) {
@@ -54,7 +80,7 @@ async function punish(message, client, type, word = null) {
   data.count++;
   data.last = Date.now();
 
-  const n = data.count;
+  const warnCount = data.count;
 
   await message.delete().catch(()=>{});
 
@@ -70,66 +96,50 @@ async function punish(message, client, type, word = null) {
       ? "Sending links is not allowed."
       : `Abusive language${word ? ` ("${word}")` : ""}.`;
 
-  // ✅ BAN (5th)
-  if (n >= 5) {
+  // ✅ BAN (5th warn)
+  if (warnCount >= 5) {
 
     await message.guild.members.ban(uid).catch(()=>{});
 
-    // ✅ DM USER
     await message.author.send(
-      `🚫 You have been **banned** from **${message.guild.name}**.\nReason: ${reasonText}\n(5/5 warnings)`
+      `🚫 You have been banned from **${message.guild.name}**\nReason: ${reasonText}\n(5/5 warnings)`
     ).catch(()=>{});
 
-    // ✅ LOG EMBED
     const embed = new EmbedBuilder()
       .setColor("#e74c3c")
-      .setTitle("User banned (5/5)")
+      .setTitle("ban")
       .addFields(
         { name: "User", value: message.author.tag },
-        { name: "Reason", value: reasonText },
-        { name: "Server", value: message.guild.name }
+        { name: "Reason", value: reasonText }
       )
       .setFooter({ text: `ID: ${uid}` })
       .setTimestamp();
 
-    await client.ownerLogEmbed(client, embed, message.guild);
+    await client.modLog(message.guild, embed);
 
     delete client.warns[gid][uid];
     return;
   }
 
   // ✅ MUTE (1–4)
-  const duration = durations[n];
+  const duration = durations[warnCount];
 
   await message.member.timeout(duration).catch(()=>{});
 
-  // ✅ DM USER
   await message.author.send(
-    `⚠️ Warning ${n}/5 in **${message.guild.name}**\nMuted for ${format(duration)}\nReason: ${reasonText}`
+    `⚠️ Warning ${warnCount}/5 in **${message.guild.name}**\nReason: ${reasonText}`
   ).catch(()=>{});
 
-  // ✅ LOG EMBED
   const embed = new EmbedBuilder()
     .setColor("#e67e22")
-    .setTitle("User muted")
+    .setTitle("timeout")
     .addFields(
       { name: "User", value: message.author.tag },
       { name: "Reason", value: reasonText },
-      { name: "Duration", value: format(duration) },
-      { name: "Warnings", value: `${n}/5` }
+      { name: "Warnings", value: `${warnCount}/5` }
     )
     .setFooter({ text: `ID: ${uid}` })
     .setTimestamp();
 
-  await client.ownerLogEmbed(client, embed, message.guild);
-}
-
-// ✅ FORMAT TIME
-function format(ms){
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
+  await client.modLog(message.guild, embed);
 }

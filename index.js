@@ -5,23 +5,23 @@ const { Client, GatewayIntentBits, Collection, Partials } = require("discord.js"
 
 // ✅ WEB SERVER (Render)
 const app = express();
-app.get("/", (req, res) => res.send("✅ Bot Alive"));
+app.get("/", (req, res) => res.send("OK"));
 app.listen(3000, () => console.log("🌐 Web running"));
 
 // ✅ CLIENT
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildVoiceStates
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
+  partials: [Partials.Message, Partials.Channel]
 });
 
-// ✅ COMMANDS
+// ✅ COLLECTIONS
 client.commands = new Collection();
 
 // ✅ DATA
@@ -29,64 +29,71 @@ client.configs = require("./data/config.json");
 client.words = require("./data/words.json");
 client.cases = require("./data/cases.json");
 
-// ✅ WARN SYSTEM
+// ✅ SYSTEM STORAGE
 client.warns = {};
-
-// ✅ ✅ DEFAULT STATUS (FIXED ✅)
+client.modLogs = {};
 client.statusList = [
   { type: 0, text: "Eight Streets RolePlay" }
 ];
 
-// ✅ CONFIG SYSTEM
-client.getConfig = (guildId) => {
-  if (!client.configs[guildId]) {
-    client.configs[guildId] = {
+// ✅ CONFIG
+client.getConfig = (id) => {
+  if (!client.configs[id]) {
+    client.configs[id] = {
       logChannel: null,
       whitelist: [],
       logsEnabled: true
     };
   }
-  return client.configs[guildId];
+  return client.configs[id];
 };
 
-client.saveConfig = () => {
-  fs.writeFileSync("./data/config.json", JSON.stringify(client.configs, null, 2));
+// ✅ CASE SYSTEM
+client.addCase = (gid, data) => {
+  if (!client.cases[gid]) client.cases[gid] = [];
+
+  const id = client.cases[gid].length + 1;
+
+  client.cases[gid].push({
+    id,
+    ...data,
+    time: new Date()
+  });
+
+  fs.writeFileSync("./data/cases.json", JSON.stringify(client.cases, null, 2));
+
+  return id;
 };
 
-// ✅ LOG SYSTEM
-client.log = async (guild, embed) => {
-  const config = client.getConfig(guild.id);
-  if (!config.logChannel || config.logsEnabled === false) return;
+// ✅ MOD LOG (CHANNEL + OWNER DM)
+client.modLog = async (guild, embed) => {
 
-  const ch = guild.channels.cache.get(config.logChannel);
-  if (!ch) return;
+  const chId = client.modLogs[guild.id];
+  if (chId) {
+    const ch = guild.channels.cache.get(chId);
+    if (ch) ch.send({ embeds: [embed] }).catch(()=>{});
+  }
 
-  ch.send({ embeds: [embed] }).catch(() => {});
-};
-
-// ✅ OWNER + CHANNEL LOG
-client.ownerLogEmbed = async (client, embed, guild) => {
   try {
-    const owner = await client.users.fetch(process.env.OWNER_ID);
-    owner.send({ embeds: [embed] }).catch(()=>{});
-
-    const config = client.getConfig(guild.id);
-    if (config.logChannel && config.logsEnabled !== false) {
-      const ch = guild.channels.cache.get(config.logChannel);
-      if (ch) ch.send({ embeds: [embed] }).catch(()=>{});
-    }
+    const owner = await guild.client.users.fetch(process.env.OWNER_ID);
+    await owner.send({ embeds: [embed] }).catch(()=>{});
   } catch {}
+};
+
+// ✅ SET MOD LOG CHANNEL
+client.setModLog = (gid, cid) => {
+  client.modLogs[gid] = cid;
 };
 
 // ✅ LOAD COMMANDS
 fs.readdirSync("./commands").forEach(file => {
   const cmd = require(`./commands/${file}`);
   if (cmd.data) client.commands.set(cmd.data.name, cmd);
-  if (cmd.name) client.commands.set(cmd.name, cmd);
 });
 
-// ✅ SLASH COMMAND HANDLER
+// ✅ SLASH COMMAND HANDLER (FIXED)
 client.on("interactionCreate", async (interaction) => {
+
   if (!interaction.isChatInputCommand()) return;
 
   const cmd = client.commands.get(interaction.commandName);
@@ -96,39 +103,20 @@ client.on("interactionCreate", async (interaction) => {
     await cmd.execute(interaction, client);
   } catch (err) {
     console.error(err);
-    if (!interaction.replied) {
+
+    if (!interaction.replied && !interaction.deferred) {
       interaction.reply({ content: "❌ Error", ephemeral: true });
     }
   }
 });
 
-// ✅ PREFIX COMMAND HANDLER
-client.on("messageCreate", async (message) => {
-  if (!message.guild || message.author.bot) return;
-
-  const prefix = "!";
-  if (!message.content.startsWith(prefix)) return;
-
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
-  const cmdName = args.shift().toLowerCase();
-
-  const cmd = client.commands.get(cmdName);
-  if (!cmd) return;
-
-  try {
-    await cmd.execute(message, args, client);
-  } catch (err) {
-    console.error(err);
-  }
-});
-
 // ✅ LOAD EVENTS
 fs.readdirSync("./events").forEach(file => {
-  const event = require(`./events/${file}`);
-  client.on(event.name, (...args) => event.execute(...args, client));
+  const ev = require(`./events/${file}`);
+  client.on(ev.name, (...args) => ev.execute(...args, client));
 });
 
-// ✅ READY + ROTATING STATUS (FIXED ✅)
+// ✅ READY + ROTATING STATUS
 client.on("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
@@ -136,16 +124,7 @@ client.on("clientReady", () => {
 
   setInterval(() => {
 
-    if (!client.statusList || client.statusList.length === 0) {
-      client.user.setPresence({
-        activities: [{
-          name: "Eight Streets RolePlay",
-          type: 0
-        }],
-        status: "online"
-      });
-      return;
-    }
+    if (!client.statusList.length) return;
 
     const s = client.statusList[i % client.statusList.length];
 

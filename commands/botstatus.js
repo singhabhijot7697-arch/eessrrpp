@@ -3,52 +3,32 @@ const { SlashCommandBuilder } = require("discord.js");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("botstatus")
-    .setDescription("Set rotating bot status")
-
+    .setDescription("Set bot status")
     .addIntegerOption(o =>
-      o.setName("type1")
-        .setDescription("Type 1 (0-3)")
+      o.setName("type")
+        .setDescription("Type (0=playing,2=listening,3=watching)")
         .setRequired(true)
     )
     .addStringOption(o =>
-      o.setName("text1")
-        .setDescription("Text 1")
+      o.setName("text")
+        .setDescription("Status text")
         .setRequired(true)
-    )
-
-    .addIntegerOption(o =>
-      o.setName("type2")
-        .setDescription("Type 2")
-    )
-    .addStringOption(o =>
-      o.setName("text2")
-        .setDescription("Text 2")
     ),
 
-  async execute(interaction, client) {
+  async execute(i, client) {
 
-    await interaction.deferReply({ flags: 64 });
+    await i.deferReply({ flags: 64 });
 
-    if (interaction.user.id !== process.env.OWNER_ID) {
-      return interaction.editReply({ content: "❌ Owner only" });
-    }
-
-    const t1 = interaction.options.getInteger("type1");
-    const s1 = interaction.options.getString("text1");
-
-    const t2 = interaction.options.getInteger("type2");
-    const s2 = interaction.options.getString("text2");
+    if (i.user.id !== process.env.OWNER_ID)
+      return i.editReply("❌ Owner only");
 
     client.statusList = [
-      { type: t1, text: s1 }
+      {
+        type: i.options.getInteger("type"),
+        text: i.options.getString("text")
+      }
     ];
 
-    if (t2 !== null && s2) {
-      client.statusList.push({ type: t2, text: s2 });
-    }
-
-    await interaction.editReply({
-      content: "✅ Status rotation updated"
-    });
+    i.editReply("✅ Status updated");
   }
 };

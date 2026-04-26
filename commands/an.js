@@ -5,7 +5,7 @@ module.exports = {
     .setName("an")
     .setDescription("Send maintenance announcement")
 
-    // ✅ REQUIRED
+    // ✅ REQUIRED FIRST (IMPORTANT)
     .addStringOption(o =>
       o.setName("date")
         .setDescription("Maintenance date & time")
@@ -13,26 +13,31 @@ module.exports = {
     )
     .addStringOption(o =>
       o.setName("servers")
-        .setDescription("Affected servers (text)")
+        .setDescription("Affected servers")
         .setRequired(true)
     )
-
-    // ✅ ROLE FOR PING
     .addRoleOption(o =>
       o.setName("role")
         .setDescription("Role to ping")
         .setRequired(true)
     )
 
-    // ✅ EMOJIS
-    .addStringOption(o => o.setName("title_emoji").setDescription("Title emoji"))
-    .addStringOption(o => o.setName("date_emoji").setDescription("Date emoji"))
-    .addStringOption(o => o.setName("server_emoji").setDescription("Server emoji"))
-
-    // ✅ IMAGE
+    // ✅ OPTIONAL AFTER
+    .addStringOption(o =>
+      o.setName("title_emoji")
+        .setDescription("Emoji for title")
+    )
+    .addStringOption(o =>
+      o.setName("date_emoji")
+        .setDescription("Emoji for date")
+    )
+    .addStringOption(o =>
+      o.setName("server_emoji")
+        .setDescription("Emoji for servers")
+    )
     .addAttachmentOption(o =>
       o.setName("image")
-        .setDescription("Image (top-right)")
+        .setDescription("Image for embed") // ✅ REQUIRED FIX
     ),
 
   async execute(interaction, client) {
@@ -41,7 +46,6 @@ module.exports = {
 
     const config = client.getConfig(interaction.guild.id);
 
-    // ✅ PERMISSION CHECK
     const allowed =
       interaction.user.id === process.env.OWNER_ID ||
       config.whitelist.includes(interaction.user.id) ||
@@ -55,30 +59,25 @@ module.exports = {
     const serversText = interaction.options.getString("servers");
     const role = interaction.options.getRole("role");
 
-    // ✅ EMOJIS
     const e1 = interaction.options.getString("title_emoji") || "⚠️";
     const e2 = interaction.options.getString("date_emoji") || "📅";
     const e3 = interaction.options.getString("server_emoji") || "📋";
 
     const image = interaction.options.getAttachment("image");
 
-    // ✅ EMBED (TEXT ONLY)
     const embed = new EmbedBuilder()
-      .setColor("#5100ff")
+      .setColor("#0073ff")
       .setTitle(`${e1} Infrastructure Maintenance`)
       .setDescription(
-        `Scheduled maintenance will be carried out on the hosting side. During this time, brief interruptions in service and network timeouts may occur.\n\n` +
-
+        `Scheduled maintenance will be carried out on the hosting side.\n\n` +
         `${e2} **Maintenance Date**\n${date}\n\n` +
-
         `${e3} **Affected Servers**\n${serversText}`
       )
       .setFooter({ text: "Thank you for your understanding." })
       .setTimestamp();
 
     if (image) embed.setThumbnail(image.url);
-    
-    // ✅ SEND MESSAGE (ROLE SPOILER)
+
     await interaction.channel.send({
       content: `||${role}||`,
       embeds: [embed],
@@ -86,21 +85,5 @@ module.exports = {
     });
 
     await interaction.editReply({ content: "✅ Announcement sent" });
-
-    // ✅ ✅ LOG SYSTEM
-    const logEmbed = new EmbedBuilder()
-      .setColor("#3498db")
-      .setTitle("/an used")
-      .addFields(
-        { name: "User", value: interaction.user.tag },
-        { name: "Server", value: interaction.guild.name },
-        { name: "Maintenance Date", value: date },
-        { name: "Affected Servers", value: serversText },
-        { name: "Ping Role", value: role.name }
-      )
-      .setFooter({ text: `ID: ${interaction.user.id}` })
-      .setTimestamp();
-
-    client.ownerLogEmbed(client, logEmbed, interaction.guild);
   }
 };

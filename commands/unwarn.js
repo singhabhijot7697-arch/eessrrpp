@@ -1,28 +1,41 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("unwarn")
-    .setDescription("Remove warnings from a user")
+    .setDescription("Remove warning")
     .addUserOption(o =>
       o.setName("user")
-        .setDescription("User")
+        .setDescription("User") 
         .setRequired(true)
     ),
 
-  async execute(interaction, client) {
+  async execute(i, client) {
 
-    if (interaction.user.id !== process.env.OWNER_ID)
-      return interaction.reply({ content: "❌ Owner only", ephemeral: true });
+    const user = i.options.getUser("user");
+    const gid = i.guild.id;
 
-    const user = interaction.options.getUser("user");
-    const gid = interaction.guild.id;
+    if (client.warns[gid]) delete client.warns[gid][user.id];
 
-    if (client.warns[gid] && client.warns[gid][user.id]) {
-      delete client.warns[gid][user.id];
-      return interaction.reply({ content: `✅ Warnings cleared for ${user.tag}`, ephemeral: true });
-    }
+    const caseId = client.addCase(gid, {
+      user: user.id,
+      action: "unwarn",
+      reason: "Removed warning",
+      moderator: i.user.tag
+    });
 
-    interaction.reply({ content: "❌ No warnings found", ephemeral: true });
+    const embed = new EmbedBuilder()
+      .setColor("#95a5a6")
+      .setTitle(`unwarn | case ${caseId}`)
+      .addFields(
+        { name: "User", value: `${user}` },
+        { name: "Moderator", value: i.user.tag }
+      )
+      .setFooter({ text: `ID: ${user.id}` })
+      .setTimestamp();
+
+    client.modLog(i.guild, embed);
+
+    i.reply({ content: "✅ Warning removed", ephemeral: true });
   }
 };

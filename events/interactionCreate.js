@@ -1,20 +1,44 @@
 module.exports = {
   name: "interactionCreate",
+
   async execute(interaction, client) {
-    if (!interaction.isChatInputCommand()) return;
 
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
+    // ✅ SLASH COMMANDS
+    if (interaction.isChatInputCommand()) {
 
-    try {
-      await command.execute(interaction, client);
-    } catch (error) {
-      console.error(error);
+      const cmd = client.commands.get(interaction.commandName);
+      if (!cmd) return;
 
-      if (interaction.replied || interaction.deferred) {
-        interaction.followUp({ content: "❌ Error executing command", ephemeral: true });
-      } else {
-        interaction.reply({ content: "❌ Error executing command", ephemeral: true });
+      try {
+        await cmd.execute(interaction, client);
+      } catch (err) {
+        console.error(err);
+        if (!interaction.replied) {
+          interaction.reply({ content: "❌ Error", ephemeral: true });
+        }
+      }
+    }
+
+    // ✅ VERIFICATION BUTTON
+    if (interaction.isButton()) {
+
+      if (interaction.customId === "verify_btn") {
+
+        const cfg = client.verifyConfig[interaction.guild.id];
+        if (!cfg) return;
+
+        const member = interaction.member;
+
+        await member.roles.remove(cfg.unverified).catch(()=>{});
+        await member.roles.add(cfg.verified).catch(()=>{});
+
+        await interaction.reply({ content: "✅ Verified!", ephemeral: true });
+
+        // ✅ LOG
+        client.log(interaction.guild, {
+          description: "User verified",
+          fields: [{ name: "User", value: interaction.user.tag }]
+        });
       }
     }
   }

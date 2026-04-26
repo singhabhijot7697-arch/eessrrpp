@@ -1,29 +1,27 @@
-const fs = require("fs");
 const { SlashCommandBuilder } = require("discord.js");
+const fs = require("fs");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("addword")
-    .setDescription("Add abuse word")
+    .setDescription("Add blocked word")
     .addStringOption(o =>
       o.setName("word")
-        .setDescription("Word")
+        .setDescription("Word to add")
         .setRequired(true)
     ),
 
-  async execute(interaction, client) {
+  async execute(i, client) {
 
-    if (interaction.user.id !== process.env.OWNER_ID)
-      return interaction.reply({ content: "❌ Owner only", ephemeral: true });
-
-    const word = interaction.options.getString("word").toLowerCase();
+    const word = i.options.getString("word").toLowerCase();
 
     if (client.words.includes(word))
-      return interaction.reply({ content: "Already exists", ephemeral: true });
+      return i.reply("Already exists");
 
     client.words.push(word);
+
     fs.writeFileSync("./data/words.json", JSON.stringify(client.words, null, 2));
 
-    interaction.reply({ content: `✅ Added: ${word}`, ephemeral: true });
+    i.reply(`✅ Added: ${word}`);
   }
 };

@@ -2,8 +2,8 @@ const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("cases")
-    .setDescription("User case history")
+    .setName("warnlist")
+    .setDescription("Show warnings")
     .addUserOption(o =>
       o.setName("user")
         .setDescription("User")
@@ -13,13 +13,8 @@ module.exports = {
   async execute(i, client) {
     const user = i.options.getUser("user");
 
-    const cases = client.cases[i.guild.id] || [];
-    const list = cases.filter(c => c.user === user.id);
+    const warns = client.warns[i.guild.id]?.[user.id] || 0;
 
-    if (!list.length) return i.reply("None");
-
-    const text = list.map(c => `#${c.id} ${c.action}`).join("\n");
-
-    i.reply(text);
+    i.reply(`${warns}/5 warnings`);
   }
 };
